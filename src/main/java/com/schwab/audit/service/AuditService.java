@@ -200,8 +200,7 @@ public class AuditService {
 
     @Transactional(readOnly = true)
     public com.schwab.audit.dto.AuditExportBundle exportForResource(String resourceId) {
-        Specification<AuditRecord> spec = Specification.where((root, query, cb) -> cb.equal(root.get("resourceId"), resourceId));
-        List<AuditRecord> targetRecords = auditRecordRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "id"));
+        List<AuditRecord> targetRecords = auditRecordRepository.findByResourceIdOrderByIdAsc(resourceId);
         
         if (targetRecords.isEmpty()) {
             return new com.schwab.audit.dto.AuditExportBundle(Collections.emptyList(), Collections.emptyMap());
@@ -210,7 +209,7 @@ public class AuditService {
         Long firstId = targetRecords.get(0).getId();
         Long lastId = targetRecords.get(targetRecords.size() - 1).getId();
         
-        List<AuditRecord> intermediateRecords = auditRecordRepository.findByIdBetween(firstId, lastId);
+        List<com.schwab.audit.repository.AuditRecordRepository.IdAndHash> intermediateRecords = auditRecordRepository.findHashesByIdBetween(firstId, lastId);
         
         Set<Long> targetIds = new HashSet<>();
         for (AuditRecord r : targetRecords) {
@@ -218,7 +217,7 @@ public class AuditService {
         }
         
         Map<Long, String> intermediateHashes = new HashMap<>();
-        for (AuditRecord r : intermediateRecords) {
+        for (com.schwab.audit.repository.AuditRecordRepository.IdAndHash r : intermediateRecords) {
             if (!targetIds.contains(r.getId())) {
                 intermediateHashes.put(r.getId(), r.getHash());
             }
