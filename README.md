@@ -131,6 +131,19 @@ curl -X GET "http://localhost:8080/api/audit/export?resourceId=session-456" \
   -u admin:secret-audit-key
 ```
 
+### 7. Compliance CSV Export
+**GET** `/api/audit/compliance/report`
+
+Downloads a synchronous CSV report of all audit events for a specific client account, optionally filtered by date.
+
+*Request:*
+```bash
+curl -X GET "http://localhost:8080/api/audit/compliance/report?resourceId=account-123" \
+  -u admin:secret-audit-key \
+  -o compliance_report.csv
+```
+
+
 ## Architecture & Cryptography
 
 The service links records sequentially. To support **Structured Redaction**, the `payload` is mathematically decoupled from the overall hash:
