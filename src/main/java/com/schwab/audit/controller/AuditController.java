@@ -96,4 +96,9 @@ public class AuditController {
         int count = auditService.archiveOldRecords(before);
         return ResponseEntity.ok(java.util.Map.of("archivedCount", count));
     }
+
+    @GetMapping("/export")
+    public ResponseEntity<com.schwab.audit.dto.AuditExportBundle> export(@RequestParam String resourceId) {
+        return ResponseEntity.ok(auditService.exportForResource(resourceId));
+    }
 }

@@ -18,4 +18,6 @@ public interface AuditRecordRepository extends JpaRepository<AuditRecord, Long>,
     Optional<AuditRecord> findTopByOrderByIdDesc();
 
     java.util.List<AuditRecord> findByTimestampBeforeAndStatus(java.time.Instant before, AuditRecord.ArchiveStatus status);
+
+    java.util.List<AuditRecord> findByIdBetween(Long startId, Long endId);
 }

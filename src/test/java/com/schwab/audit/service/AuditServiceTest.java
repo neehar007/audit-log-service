@@ -387,4 +387,42 @@ class AuditServiceTest {
             assertTrue(result.isIntact());
         }
     }
+
+    @Nested
+    @DisplayName("ExportForResource Tests")
+    class ExportForResourceTests {
+
+        @Test
+        @DisplayName("exportForResource returns target records and intermediate hashes")
+        void exportForResource_ReturnsCorrectBundle() {
+            AuditRecord r1 = auditService.saveRecord(new AuditRecord("LOGIN", "u1", "AUTH", "RES-A", "{}", null, null, null));
+            AuditRecord r2 = auditService.saveRecord(new AuditRecord("VIEW", "u1", "AUTH", "RES-B", "{}", null, null, null));
+            AuditRecord r3 = auditService.saveRecord(new AuditRecord("UPDATE", "u1", "AUTH", "RES-A", "{}", null, null, null));
+            AuditRecord r4 = auditService.saveRecord(new AuditRecord("DELETE", "u1", "AUTH", "RES-C", "{}", null, null, null));
+            AuditRecord r5 = auditService.saveRecord(new AuditRecord("LOGOUT", "u1", "AUTH", "RES-A", "{}", null, null, null));
+
+            com.schwab.audit.dto.AuditExportBundle bundle = auditService.exportForResource("RES-A");
+
+            List<AuditRecord> targets = bundle.getTargetRecords();
+            assertEquals(3, targets.size());
+            assertEquals(r1.getId(), targets.get(0).getId());
+            assertEquals(r3.getId(), targets.get(1).getId());
+            assertEquals(r5.getId(), targets.get(2).getId());
+
+            java.util.Map<Long, String> intermediates = bundle.getIntermediateHashes();
+            assertEquals(2, intermediates.size());
+            assertTrue(intermediates.containsKey(r2.getId()));
+            assertTrue(intermediates.containsKey(r4.getId()));
+            assertEquals(r2.getHash(), intermediates.get(r2.getId()));
+            assertEquals(r4.getHash(), intermediates.get(r4.getId()));
+        }
+
+        @Test
+        @DisplayName("exportForResource returns empty bundle for non-existent resource")
+        void exportForResource_NonExistentResource_ReturnsEmptyBundle() {
+            com.schwab.audit.dto.AuditExportBundle bundle = auditService.exportForResource("NON_EXISTENT");
+            assertTrue(bundle.getTargetRecords().isEmpty());
+            assertTrue(bundle.getIntermediateHashes().isEmpty());
+        }
+    }
 }

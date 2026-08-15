@@ -197,4 +197,33 @@ public class AuditService {
         auditRecordRepository.saveAll(records);
         return records.size();
     }
+
+    @Transactional(readOnly = true)
+    public com.schwab.audit.dto.AuditExportBundle exportForResource(String resourceId) {
+        Specification<AuditRecord> spec = Specification.where((root, query, cb) -> cb.equal(root.get("resourceId"), resourceId));
+        List<AuditRecord> targetRecords = auditRecordRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "id"));
+        
+        if (targetRecords.isEmpty()) {
+            return new com.schwab.audit.dto.AuditExportBundle(Collections.emptyList(), Collections.emptyMap());
+        }
+        
+        Long firstId = targetRecords.get(0).getId();
+        Long lastId = targetRecords.get(targetRecords.size() - 1).getId();
+        
+        List<AuditRecord> intermediateRecords = auditRecordRepository.findByIdBetween(firstId, lastId);
+        
+        Set<Long> targetIds = new HashSet<>();
+        for (AuditRecord r : targetRecords) {
+            targetIds.add(r.getId());
+        }
+        
+        Map<Long, String> intermediateHashes = new HashMap<>();
+        for (AuditRecord r : intermediateRecords) {
+            if (!targetIds.contains(r.getId())) {
+                intermediateHashes.put(r.getId(), r.getHash());
+            }
+        }
+        
+        return new com.schwab.audit.dto.AuditExportBundle(targetRecords, intermediateHashes);
+    }
 }
