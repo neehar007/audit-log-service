@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 import java.util.Objects;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 
 @Entity
 @Table(name = "audit_records")
@@ -21,13 +23,13 @@ public class AuditRecord {
     @Column(name = "event_type", nullable = false)
     private String eventType;
 
-    @Column(name = "actor_id", nullable = false)
+    @Column(name = "actor_id")
     private String actorId;
 
-    @Column(name = "resource_type", nullable = false)
+    @Column(name = "resource_type")
     private String resourceType;
 
-    @Column(name = "resource_id", nullable = false)
+    @Column(name = "resource_id")
     private String resourceId;
 
     @Column(name = "payload", columnDefinition = "TEXT")
@@ -44,6 +46,14 @@ public class AuditRecord {
 
     @Column(name = "hash", nullable = false)
     private String hash;
+
+    public enum ArchiveStatus {
+        ACTIVE, ARCHIVED
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private ArchiveStatus status = ArchiveStatus.ACTIVE;
 
     public AuditRecord() {
     }
@@ -155,6 +165,14 @@ public class AuditRecord {
         this.hash = hash;
     }
 
+    public ArchiveStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ArchiveStatus status) {
+        this.status = status;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -169,12 +187,13 @@ public class AuditRecord {
                 Objects.equals(payloadMetadataJson, that.payloadMetadataJson) &&
                 Objects.equals(timestamp, that.timestamp) &&
                 Objects.equals(previousHash, that.previousHash) &&
-                Objects.equals(hash, that.hash);
+                Objects.equals(hash, that.hash) &&
+                status == that.status;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, eventType, actorId, resourceType, resourceId, payload, payloadMetadataJson, timestamp, previousHash, hash);
+        return Objects.hash(id, eventType, actorId, resourceType, resourceId, payload, payloadMetadataJson, timestamp, previousHash, hash, status);
     }
 
     @Override
@@ -190,6 +209,7 @@ public class AuditRecord {
                 ", timestamp=" + timestamp +
                 ", previousHash='" + previousHash + '\'' +
                 ", hash='" + hash + '\'' +
+                ", status=" + status +
                 '}';
     }
 }

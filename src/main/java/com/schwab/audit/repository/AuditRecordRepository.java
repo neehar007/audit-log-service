@@ -16,4 +16,6 @@ public interface AuditRecordRepository extends JpaRepository<AuditRecord, Long>,
      * @return an Optional containing the latest AuditRecord, or empty if no records exist.
      */
     Optional<AuditRecord> findTopByOrderByIdDesc();
+
+    java.util.List<AuditRecord> findByTimestampBeforeAndStatus(java.time.Instant before, AuditRecord.ArchiveStatus status);
 }

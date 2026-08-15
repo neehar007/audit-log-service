@@ -115,6 +115,11 @@ public class AuditService {
                 return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_PREVIOUS_HASH_MISMATCH);
             }
 
+            if (record.getStatus() == AuditRecord.ArchiveStatus.ARCHIVED) {
+                expectedPreviousHash = record.getHash();
+                continue;
+            }
+
             String calculatedHash = HashUtils.computeHash(record);
             if (!Objects.equals(record.getHash(), calculatedHash)) {
                 return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
@@ -176,5 +181,20 @@ public class AuditService {
             throw new RuntimeException("Failed to redact", e);
         }
         return record;
+    }
+
+    @Transactional
+    public int archiveOldRecords(Instant before) {
+        List<AuditRecord> records = auditRecordRepository.findByTimestampBeforeAndStatus(before, AuditRecord.ArchiveStatus.ACTIVE);
+        for (AuditRecord record : records) {
+            record.setPayload(null);
+            record.setPayloadMetadataJson(null);
+            record.setActorId(null);
+            record.setResourceType(null);
+            record.setResourceId(null);
+            record.setStatus(AuditRecord.ArchiveStatus.ARCHIVED);
+        }
+        auditRecordRepository.saveAll(records);
+        return records.size();
     }
 }

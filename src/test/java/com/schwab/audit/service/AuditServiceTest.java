@@ -356,4 +356,35 @@ class AuditServiceTest {
             assertEquals(ChainVerificationResult.VIOLATION_PREVIOUS_HASH_MISMATCH, result.getViolationType());
         }
     }
+
+    @Nested
+    @DisplayName("ArchiveRecords Tests")
+    class ArchiveRecordsTests {
+
+        @Test
+        @DisplayName("archiveOldRecords sets status to ARCHIVED and nullifies fields")
+        void archiveOldRecords_SetsArchivedAndNullifiesFields() {
+            AuditRecord r1 = auditService.saveRecord(new AuditRecord("LOGIN", "user1", "AUTH", "id1", "{\"role\":\"USER\"}", null, null, null));
+            AuditRecord r2 = auditService.saveRecord(new AuditRecord("LOGIN", "user2", "AUTH", "id2", "{\"role\":\"ADMIN\"}", null, null, null));
+            
+            Instant before = Instant.now().plusSeconds(10);
+            int count = auditService.archiveOldRecords(before);
+            
+            assertEquals(2, count);
+            
+            List<AuditRecord> records = repository.findAll();
+            for (AuditRecord r : records) {
+                assertEquals(AuditRecord.ArchiveStatus.ARCHIVED, r.getStatus());
+                assertNull(r.getPayload());
+                assertNull(r.getPayloadMetadataJson());
+                assertNull(r.getActorId());
+                assertNull(r.getResourceType());
+                assertNull(r.getResourceId());
+            }
+            
+            // Verify chain still intact
+            ChainVerificationResult result = auditService.verifyChain();
+            assertTrue(result.isIntact());
+        }
+    }
 }

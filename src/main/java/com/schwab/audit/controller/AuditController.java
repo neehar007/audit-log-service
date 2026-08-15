@@ -90,4 +90,10 @@ public class AuditController {
         AuditRecord updatedRecord = auditService.redactField(id, field);
         return ResponseEntity.ok(updatedRecord);
     }
+
+    @PostMapping("/retention/run")
+    public ResponseEntity<java.util.Map<String, Integer>> runRetention(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant before) {
+        int count = auditService.archiveOldRecords(before);
+        return ResponseEntity.ok(java.util.Map.of("archivedCount", count));
+    }
 }
