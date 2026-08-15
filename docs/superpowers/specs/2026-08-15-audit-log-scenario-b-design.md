@@ -8,10 +8,9 @@ We are extending the Audit Log Service (Scenario B) to support three complex dat
 > [!IMPORTANT]
 > The redaction and bulk export features require changes to how we compute the hash chain. Please review the design options below to ensure they align with your expectations for the prototype.
 
-## Open Questions
-> [!NOTE]
-> 1. **Retention Trigger**: Should the retention archiving run automatically via a Spring `@Scheduled` background job, or should we expose a manual `POST /api/audit/retention/run` endpoint for easier testing in this prototype?
-> 2. **Redaction Granularity**: Is it acceptable to restrict redaction to top-level JSON keys in the `payload`, or do we need deep nested JSON redaction? (Top-level is much simpler to implement for a prototype).
+## Decisions Made
+- **Retention Trigger**: We decided to expose a manual `POST /api/audit/retention/run` endpoint for easier testing in this prototype, rather than a background `@Scheduled` job.
+- **Redaction Granularity**: We decided to restrict redaction to top-level JSON keys in the `payload` to keep the MVP simple.
 
 ---
 
