@@ -109,25 +109,25 @@ public class AuditController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
         
         org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody stream = out -> {
-            try (java.io.PrintWriter writer = new java.io.PrintWriter(out)) {
-                writer.print("ID,Timestamp,Event Type,Actor ID,Payload\r\n");
-                
-                Page<AuditRecord> records = auditService.getRecords(
-                        null, "CLIENT_ACCOUNT", resourceId, null, from, to, Pageable.unpaged());
-                
-                for (AuditRecord record : records) {
-                    String escapedPayload = "";
-                    if (record.getPayload() != null) {
-                        escapedPayload = "\"" + record.getPayload().replace("\"", "\"\"") + "\"";
-                    }
-                    writer.print(String.format("%d,%s,%s,%s,%s\r\n",
-                            record.getId(),
-                            record.getTimestamp(),
-                            record.getEventType(),
-                            record.getActorId(),
-                            escapedPayload));
+            java.io.PrintWriter writer = new java.io.PrintWriter(out);
+            writer.print("ID,Timestamp,Event Type,Actor ID,Payload\r\n");
+            
+            Page<AuditRecord> records = auditService.getRecords(
+                    null, "CLIENT_ACCOUNT", resourceId, null, from, to, Pageable.unpaged());
+            
+            for (AuditRecord record : records) {
+                String escapedPayload = "";
+                if (record.getPayload() != null) {
+                    escapedPayload = "\"" + record.getPayload().replace("\"", "\"\"") + "\"";
                 }
+                writer.print(String.format("%d,%s,%s,%s,%s\r\n",
+                        record.getId(),
+                        record.getTimestamp(),
+                        record.getEventType(),
+                        record.getActorId(),
+                        escapedPayload));
             }
+            writer.flush();
         };
 
         return ResponseEntity.ok()
