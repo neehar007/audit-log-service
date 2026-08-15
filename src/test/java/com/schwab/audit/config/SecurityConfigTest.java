@@ -32,9 +32,8 @@ class SecurityConfigTest {
 
     @Test
     void validCredentialsPassesAuthentication() throws Exception {
-        // Without controller implemented yet, authenticated request returns 404 (Not Found) rather than 401 (Unauthorized)
         mockMvc.perform(get("/api/audit/events")
                 .with(httpBasic("admin", "secret-audit-key")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
     }
 }
