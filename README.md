@@ -7,6 +7,9 @@ This service ensures the integrity of recorded events by maintaining a cryptogra
 ## Features
 - **Tamper-Evident Storage**: Cryptographically linked event records.
 - **Verification Engine**: API endpoint to scan the entire chain and identify tampered records.
+- **Structured Redaction**: Safely redact sensitive JSON payload fields without breaking the immutable hash chain.
+- **Retention Archiving**: Soft-delete old data to reclaim space while gracefully preserving cryptographic continuity.
+- **Verifiable Bulk Export**: Export target records with bridging hashes for independent off-system chain verification.
 - **RESTful API**: Standardized JSON APIs with robust RFC 7807 error handling.
 - **Pagination & Filtering**: Flexible querying for historical audit records.
 - **Security**: Secured via HTTP Basic Authentication.
@@ -93,20 +96,49 @@ curl -X GET http://localhost:8080/api/audit/verify \
 }
 ```
 
-*Response (Tampered):*
-```json
-{
-  "status": "HASH_MISMATCH",
-  "failingRecordId": 42
-}
+### 4. Redact a Payload Field
+**POST** `/api/audit/events/{id}/redact`
+
+Replaces a sensitive JSON key's value with `"***REDACTED***"` in the payload, without breaking the hash chain.
+
+*Request:*
+```bash
+curl -X POST http://localhost:8080/api/audit/events/1/redact \
+  -u admin:secret-audit-key \
+  -H "Content-Type: application/json" \
+  -d '{"field": "ip"}'
+```
+
+### 5. Run Retention Archiving
+**POST** `/api/audit/retention/run`
+
+Strips large payloads and metadata from events older than a given date, preserving only the hashes needed to maintain chain integrity.
+
+*Request:*
+```bash
+curl -X POST "http://localhost:8080/api/audit/retention/run?before=2024-01-01T00:00:00Z" \
+  -u admin:secret-audit-key
+```
+
+### 6. Verifiable Bulk Export
+**GET** `/api/audit/export`
+
+Exports all records for a given `resourceId`, bundling them with the missing intermediate hashes required to bridge the gaps and independently verify the chain.
+
+*Request:*
+```bash
+curl -X GET "http://localhost:8080/api/audit/export?resourceId=session-456" \
+  -u admin:secret-audit-key
 ```
 
 ## Architecture & Cryptography
 
-The service links records sequentially. The hash for each record is computed as:
-`SHA-256(eventType + actorId + resourceType + resourceId + payload + timestamp_epoch_millis + previousHash)`
+The service links records sequentially. To support **Structured Redaction**, the `payload` is mathematically decoupled from the overall hash:
+1. When an event is ingested, each top-level key/value pair in the JSON payload is hashed independently using a random cryptographic nonce. This metadata is stored securely.
+2. The overall record hash is computed as:
+   `SHA-256(eventType + actorId + resourceType + resourceId + sorted_payload_field_hashes + timestamp_epoch_millis + previousHash)`
 
-The very first record in the system (the genesis record) uses a `previousHash` consisting of 64 zeros. This sequential lock guarantees that altering a past record invalidates its hash, which in turn invalidates the `previousHash` pointer of the next record, making the tamper easily verifiable.
+The very first record in the system (the genesis record) uses a `previousHash` consisting of 64 zeros. This sequential lock guarantees that altering a past record invalidates its hash, which in turn invalidates the `previousHash` pointer of the next record, making the tamper easily verifiable. Because payload fields are hashed individually, we can swap a field's value for `"***REDACTED***"` while maintaining verification integrity through the stored nonce.
 
 ---
 
