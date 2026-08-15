@@ -82,8 +82,8 @@ public class AuditController {
     }
 
     @PostMapping("/events/{id}/redact")
-    public ResponseEntity<AuditRecord> redactField(@org.springframework.web.bind.annotation.PathVariable Long id, @RequestBody java.util.Map<String, String> requestBody) {
-        String field = requestBody.get("field");
+    public ResponseEntity<AuditRecord> redactField(@org.springframework.web.bind.annotation.PathVariable Long id, @Valid @RequestBody com.schwab.audit.dto.RedactRequest requestBody) {
+        String field = requestBody.getField();
         if (field == null || field.isBlank()) {
             return ResponseEntity.badRequest().build();
         }

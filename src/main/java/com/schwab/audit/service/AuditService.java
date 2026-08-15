@@ -121,25 +121,31 @@ public class AuditService {
             }
             
             try {
-                if (record.getPayload() != null && !record.getPayload().isBlank() && record.getPayloadMetadataJson() != null && !record.getPayloadMetadataJson().isBlank()) {
-                    Map<String, Object> payloadMap = objectMapper.readValue(record.getPayload(), new TypeReference<Map<String, Object>>() {});
+                if (record.getPayload() != null && !record.getPayload().isBlank() && record.getPayloadMetadataJson() != null && !record.getPayloadMetadataJson().isBlank() && !record.getPayloadMetadataJson().equals("{}")) {
                     Map<String, Map<String, String>> metadata = objectMapper.readValue(record.getPayloadMetadataJson(), new TypeReference<Map<String, Map<String, String>>>() {});
-                    
-                    for (Map.Entry<String, Object> entry : payloadMap.entrySet()) {
-                        String key = entry.getKey();
-                        Object valObj = entry.getValue();
-                        String value = valObj == null ? "null" : (valObj instanceof String ? (String) valObj : (valObj instanceof Number || valObj instanceof Boolean ? valObj.toString() : objectMapper.writeValueAsString(valObj)));
+                    if (!metadata.isEmpty()) {
+                        Map<String, Object> payloadMap = objectMapper.readValue(record.getPayload(), new TypeReference<Map<String, Object>>() {});
                         
-                        if (!"***REDACTED***".equals(value)) {
-                            if (metadata.containsKey(key)) {
+                        if (payloadMap.size() != metadata.size()) {
+                            return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
+                        }
+                        
+                        for (Map.Entry<String, Object> entry : payloadMap.entrySet()) {
+                            String key = entry.getKey();
+                            if (!metadata.containsKey(key)) {
+                                return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
+                            }
+
+                            Object valObj = entry.getValue();
+                            String value = valObj == null ? "null" : (valObj instanceof String ? (String) valObj : (valObj instanceof Number || valObj instanceof Boolean ? valObj.toString() : objectMapper.writeValueAsString(valObj)));
+                            
+                            if (!"***REDACTED***".equals(value)) {
                                 String nonce = metadata.get(key).get("nonce");
                                 String expectedFieldHash = metadata.get(key).get("hash");
                                 String calculatedFieldHash = HashUtils.calculateSha256(key + value + nonce);
                                 if (!calculatedFieldHash.equals(expectedFieldHash)) {
                                     return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
                                 }
-                            } else {
-                                return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
                             }
                         }
                     }

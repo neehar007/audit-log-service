@@ -53,7 +53,9 @@ public final class HashUtils {
                 for (Map.Entry<String, Map<String, String>> entry : sortedMetadata.entrySet()) {
                     sortedHashes.append(entry.getValue().get("hash"));
                 }
-            } catch (JsonProcessingException e) {}
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("Corrupted metadata", e);
+            }
         }
 
         String rawData = safeEventType + safeActorId + safeResourceType + safeResourceId +
