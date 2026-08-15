@@ -107,3 +107,7 @@ The service links records sequentially. The hash for each record is computed as:
 `SHA-256(eventType + actorId + resourceType + resourceId + payload + timestamp_epoch_millis + previousHash)`
 
 The very first record in the system (the genesis record) uses a `previousHash` consisting of 64 zeros. This sequential lock guarantees that altering a past record invalidates its hash, which in turn invalidates the `previousHash` pointer of the next record, making the tamper easily verifiable.
+
+---
+
+*This project is powered by Antigravity :)*
