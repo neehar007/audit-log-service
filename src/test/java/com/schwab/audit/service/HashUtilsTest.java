@@ -89,7 +89,7 @@ class HashUtilsTest {
         assertNotEquals(baseHash, HashUtils.computeHash("LOGIN", "u1", "R_TYPE", "r2", "{}", timestamp, genesis));
 
         // Change payload
-        assertNotEquals(baseHash, HashUtils.computeHash("LOGIN", "u1", "R_TYPE", "r1", "{\"changed\":true}", timestamp, genesis));
+        assertNotEquals(baseHash, HashUtils.computeHash("LOGIN", "u1", "R_TYPE", "r1", "{\"changed\":{\"nonce\":\"1\",\"hash\":\"changed_hash\"}}", timestamp, genesis));
 
         // Change timestamp
         assertNotEquals(baseHash, HashUtils.computeHash("LOGIN", "u1", "R_TYPE", "r1", "{}", timestamp.plusMillis(1), genesis));

@@ -33,6 +33,9 @@ public class AuditRecord {
     @Column(name = "payload", columnDefinition = "TEXT")
     private String payload;
 
+    @Column(name = "payload_metadata_json", columnDefinition = "TEXT")
+    private String payloadMetadataJson;
+
     @Column(name = "timestamp", nullable = false)
     private Instant timestamp;
 
@@ -52,6 +55,7 @@ public class AuditRecord {
         this.resourceType = resourceType;
         this.resourceId = resourceId;
         this.payload = payload;
+        this.payloadMetadataJson = "{}";
         this.timestamp = timestamp;
         this.previousHash = previousHash;
         this.hash = hash;
@@ -65,6 +69,7 @@ public class AuditRecord {
         this.resourceType = resourceType;
         this.resourceId = resourceId;
         this.payload = payload;
+        this.payloadMetadataJson = "{}";
         this.timestamp = timestamp;
         this.previousHash = previousHash;
         this.hash = hash;
@@ -118,6 +123,14 @@ public class AuditRecord {
         this.payload = payload;
     }
 
+    public String getPayloadMetadataJson() {
+        return payloadMetadataJson;
+    }
+
+    public void setPayloadMetadataJson(String payloadMetadataJson) {
+        this.payloadMetadataJson = payloadMetadataJson;
+    }
+
     public Instant getTimestamp() {
         return timestamp;
     }
@@ -153,6 +166,7 @@ public class AuditRecord {
                 Objects.equals(resourceType, that.resourceType) &&
                 Objects.equals(resourceId, that.resourceId) &&
                 Objects.equals(payload, that.payload) &&
+                Objects.equals(payloadMetadataJson, that.payloadMetadataJson) &&
                 Objects.equals(timestamp, that.timestamp) &&
                 Objects.equals(previousHash, that.previousHash) &&
                 Objects.equals(hash, that.hash);
@@ -160,7 +174,7 @@ public class AuditRecord {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, eventType, actorId, resourceType, resourceId, payload, timestamp, previousHash, hash);
+        return Objects.hash(id, eventType, actorId, resourceType, resourceId, payload, payloadMetadataJson, timestamp, previousHash, hash);
     }
 
     @Override
@@ -172,6 +186,7 @@ public class AuditRecord {
                 ", resourceType='" + resourceType + '\'' +
                 ", resourceId='" + resourceId + '\'' +
                 ", payload='" + payload + '\'' +
+                ", payloadMetadataJson='" + payloadMetadataJson + '\'' +
                 ", timestamp=" + timestamp +
                 ", previousHash='" + previousHash + '\'' +
                 ", hash='" + hash + '\'' +

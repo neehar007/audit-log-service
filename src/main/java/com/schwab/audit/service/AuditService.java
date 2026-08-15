@@ -1,5 +1,8 @@
 package com.schwab.audit.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schwab.audit.dto.ChainVerificationResult;
 import com.schwab.audit.model.AuditRecord;
 import com.schwab.audit.repository.AuditRecordRepository;
@@ -11,36 +14,48 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
-/**
- * Service managing audit log operations, sequential tamper-evident chaining,
- * query filtering, and full chain verification.
- */
 @Service
 public class AuditService {
 
     public static final String GENESIS_PREVIOUS_HASH = HashUtils.GENESIS_PREVIOUS_HASH;
 
     private final AuditRecordRepository auditRecordRepository;
+    private final ObjectMapper objectMapper;
 
     public AuditService(AuditRecordRepository auditRecordRepository) {
         this.auditRecordRepository = auditRecordRepository;
+        this.objectMapper = new ObjectMapper();
     }
 
-    /**
-     * Appends a new audit record to the tamper-evident chain.
-     * Uses synchronized to ensure sequential appends and prevent chain forks.
-     *
-     * @param record the incoming audit record containing event metadata and payload
-     * @return the persisted AuditRecord with server-assigned timestamp, previousHash, and computed hash
-     */
     @Transactional
     public synchronized AuditRecord saveRecord(AuditRecord record) {
         if (record == null) {
             throw new IllegalArgumentException("AuditRecord cannot be null");
+        }
+
+        try {
+            if (record.getPayload() != null && !record.getPayload().isBlank()) {
+                Map<String, Object> payloadMap = objectMapper.readValue(record.getPayload(), new TypeReference<Map<String, Object>>() {});
+                Map<String, Map<String, String>> metadata = new HashMap<>();
+                for (Map.Entry<String, Object> entry : payloadMap.entrySet()) {
+                    String key = entry.getKey();
+                    Object valObj = entry.getValue();
+                    String value = valObj == null ? "null" : (valObj instanceof String ? (String) valObj : (valObj instanceof Number || valObj instanceof Boolean ? valObj.toString() : objectMapper.writeValueAsString(valObj)));
+                    String nonce = UUID.randomUUID().toString();
+                    String hash = HashUtils.calculateSha256(key + value + nonce);
+                    Map<String, String> metaEntry = new HashMap<>();
+                    metaEntry.put("nonce", nonce);
+                    metaEntry.put("hash", hash);
+                    metadata.put(key, metaEntry);
+                }
+                record.setPayloadMetadataJson(objectMapper.writeValueAsString(metadata));
+            } else {
+                record.setPayloadMetadataJson("{}");
+            }
+        } catch (Exception e) {
+            record.setPayloadMetadataJson("{}");
         }
 
         Optional<AuditRecord> lastRecordOpt = auditRecordRepository.findTopByOrderByIdDesc();
@@ -56,23 +71,10 @@ public class AuditService {
         return auditRecordRepository.save(record);
     }
 
-    /**
-     * Retrieves paginated audit records with optional multi-parameter filtering.
-     *
-     * @param actorId      optional actorId filter
-     * @param resourceType optional resourceType filter
-     * @param resourceId   optional resourceId filter
-     * @param eventType    optional eventType filter
-     * @param from         optional start timestamp filter (inclusive)
-     * @param to           optional end timestamp filter (inclusive)
-     * @param pageable     pagination information
-     * @return page of audit records matching the specified criteria
-     */
     @Transactional(readOnly = true)
     public Page<AuditRecord> getRecords(String actorId, String resourceType, String resourceId,
                                         String eventType, Instant from, Instant to, Pageable pageable) {
         Specification<AuditRecord> spec = Specification.where(null);
-
         if (actorId != null && !actorId.isBlank()) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("actorId"), actorId));
         }
@@ -91,26 +93,14 @@ public class AuditService {
         if (to != null) {
             spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("timestamp"), to));
         }
-
         return auditRecordRepository.findAll(spec, pageable);
     }
 
-    /**
-     * Retrieves paginated audit records without filtering.
-     *
-     * @param pageable pagination information
-     * @return page of audit records
-     */
     @Transactional(readOnly = true)
     public Page<AuditRecord> getRecords(Pageable pageable) {
         return auditRecordRepository.findAll(pageable);
     }
 
-    /**
-     * Verifies the cryptographic integrity of the entire audit record chain from genesis to latest.
-     *
-     * @return ChainVerificationResult detailing whether the chain is INTACT or BROKEN
-     */
     @Transactional(readOnly = true)
     public ChainVerificationResult verifyChain() {
         List<AuditRecord> records = auditRecordRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
@@ -121,21 +111,64 @@ public class AuditService {
         String expectedPreviousHash = GENESIS_PREVIOUS_HASH;
 
         for (AuditRecord record : records) {
-            // 1. Verify previousHash matches the expected previous hash
             if (!Objects.equals(record.getPreviousHash(), expectedPreviousHash)) {
                 return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_PREVIOUS_HASH_MISMATCH);
             }
 
-            // 2. Re-compute hash and verify
             String calculatedHash = HashUtils.computeHash(record);
             if (!Objects.equals(record.getHash(), calculatedHash)) {
                 return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
             }
+            
+            try {
+                if (record.getPayload() != null && !record.getPayload().isBlank() && record.getPayloadMetadataJson() != null && !record.getPayloadMetadataJson().isBlank()) {
+                    Map<String, Object> payloadMap = objectMapper.readValue(record.getPayload(), new TypeReference<Map<String, Object>>() {});
+                    Map<String, Map<String, String>> metadata = objectMapper.readValue(record.getPayloadMetadataJson(), new TypeReference<Map<String, Map<String, String>>>() {});
+                    
+                    for (Map.Entry<String, Object> entry : payloadMap.entrySet()) {
+                        String key = entry.getKey();
+                        Object valObj = entry.getValue();
+                        String value = valObj == null ? "null" : (valObj instanceof String ? (String) valObj : (valObj instanceof Number || valObj instanceof Boolean ? valObj.toString() : objectMapper.writeValueAsString(valObj)));
+                        
+                        if (!"***REDACTED***".equals(value)) {
+                            if (metadata.containsKey(key)) {
+                                String nonce = metadata.get(key).get("nonce");
+                                String expectedFieldHash = metadata.get(key).get("hash");
+                                String calculatedFieldHash = HashUtils.calculateSha256(key + value + nonce);
+                                if (!calculatedFieldHash.equals(expectedFieldHash)) {
+                                    return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
+                                }
+                            } else {
+                                return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                return ChainVerificationResult.broken(record.getId(), ChainVerificationResult.VIOLATION_HASH_MISMATCH);
+            }
 
-            // 3. Advance chain expectation
             expectedPreviousHash = record.getHash();
         }
 
         return ChainVerificationResult.intact();
+    }
+    
+    @Transactional
+    public AuditRecord redactField(Long id, String field) {
+        AuditRecord record = auditRecordRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Record not found"));
+        try {
+            if (record.getPayload() != null && !record.getPayload().isBlank()) {
+                Map<String, Object> payloadMap = objectMapper.readValue(record.getPayload(), new TypeReference<Map<String, Object>>() {});
+                if (payloadMap.containsKey(field)) {
+                    payloadMap.put(field, "***REDACTED***");
+                    record.setPayload(objectMapper.writeValueAsString(payloadMap));
+                    return auditRecordRepository.save(record);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to redact", e);
+        }
+        return record;
     }
 }

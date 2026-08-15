@@ -21,6 +21,7 @@ class AuditRecordTest {
         record1.setResourceType("USER");
         record1.setResourceId("user1");
         record1.setPayload("{}");
+        record1.setPayloadMetadataJson("{}");
         record1.setTimestamp(now);
         record1.setPreviousHash("prev1");
         record1.setHash("hash1");

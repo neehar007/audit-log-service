@@ -80,4 +80,14 @@ public class AuditController {
         ChainVerificationResult result = auditService.verifyChain();
         return ResponseEntity.ok(result);
     }
+
+    @PostMapping("/events/{id}/redact")
+    public ResponseEntity<AuditRecord> redactField(@org.springframework.web.bind.annotation.PathVariable Long id, @RequestBody java.util.Map<String, String> requestBody) {
+        String field = requestBody.get("field");
+        if (field == null || field.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        AuditRecord updatedRecord = auditService.redactField(id, field);
+        return ResponseEntity.ok(updatedRecord);
+    }
 }

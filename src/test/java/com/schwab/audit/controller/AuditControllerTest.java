@@ -267,8 +267,8 @@ class AuditControllerTest {
         @Test
         @DisplayName("Get events retrieves all persisted records")
         void getEvents_ReturnsPersistedRecords() throws Exception {
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "login1");
-            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "trade1");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"msg\":\"login\"}");
+            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "{\"msg\":\"trade1\"}");
 
             mockMvc.perform(get("/api/audit/events")
                             .with(httpBasic(AUTH_USER, AUTH_PASS)))
@@ -282,8 +282,8 @@ class AuditControllerTest {
         @Test
         @DisplayName("Filter events by actorId")
         void getEvents_FilterByActorId() throws Exception {
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "login1");
-            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "trade1");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"msg\":\"login\"}");
+            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "{\"msg\":\"trade1\"}");
 
             mockMvc.perform(get("/api/audit/events")
                             .param("actorId", "alice")
@@ -296,9 +296,9 @@ class AuditControllerTest {
         @Test
         @DisplayName("Filter events by eventType and resourceType")
         void getEvents_FilterByEventTypeAndResourceType() throws Exception {
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "login1");
-            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "trade1");
-            createRecordViaApi("TRADE", "charlie", "ACCOUNT", "a1", "trade2");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"msg\":\"login\"}");
+            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "{\"msg\":\"trade1\"}");
+            createRecordViaApi("TRADE", "charlie", "ACCOUNT", "a1", "{\"msg\":\"trade2\"}");
 
             mockMvc.perform(get("/api/audit/events")
                             .param("eventType", "TRADE")
@@ -312,8 +312,8 @@ class AuditControllerTest {
         @Test
         @DisplayName("Filter events by resourceId")
         void getEvents_FilterByResourceId() throws Exception {
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "login1");
-            createRecordViaApi("TRADE", "bob", "ORDER", "o200", "trade1");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"msg\":\"login\"}");
+            createRecordViaApi("TRADE", "bob", "ORDER", "o200", "{\"msg\":\"trade1\"}");
 
             mockMvc.perform(get("/api/audit/events")
                             .param("resourceId", "o200")
@@ -327,7 +327,7 @@ class AuditControllerTest {
         @DisplayName("Filter events by timestamp range")
         void getEvents_FilterByTimestampRange() throws Exception {
             Instant before = Instant.now().minus(1, ChronoUnit.HOURS);
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "login1");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"msg\":\"login\"}");
             Instant after = Instant.now().plus(1, ChronoUnit.HOURS);
 
             mockMvc.perform(get("/api/audit/events")
@@ -341,9 +341,9 @@ class AuditControllerTest {
         @Test
         @DisplayName("Pagination parameters return sliced pages")
         void getEvents_Pagination() throws Exception {
-            createRecordViaApi("EVT1", "u1", "RES", "r1", "p1");
-            createRecordViaApi("EVT2", "u2", "RES", "r2", "p2");
-            createRecordViaApi("EVT3", "u3", "RES", "r3", "p3");
+            createRecordViaApi("EVT1", "u1", "RES", "r1", "{\"p\":1}");
+            createRecordViaApi("EVT2", "u2", "RES", "r2", "{\"p\":2}");
+            createRecordViaApi("EVT3", "u3", "RES", "r3", "{\"p\":3}");
 
             mockMvc.perform(get("/api/audit/events")
                             .param("page", "0")
@@ -381,9 +381,9 @@ class AuditControllerTest {
         @Test
         @DisplayName("Valid chained records return INTACT verification status")
         void verifyChain_ValidChain_ReturnsIntact() throws Exception {
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "p1");
-            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "p2");
-            createRecordViaApi("LOGOUT", "alice", "USER", "u1", "p3");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"p\":1}");
+            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "{\"p\":2}");
+            createRecordViaApi("LOGOUT", "alice", "USER", "u1", "{\"p\":3}");
 
             mockMvc.perform(get("/api/audit/verify")
                             .with(httpBasic(AUTH_USER, AUTH_PASS)))
@@ -394,8 +394,8 @@ class AuditControllerTest {
         @Test
         @DisplayName("Tampered record payload returns BROKEN with HASH_MISMATCH")
         void verifyChain_TamperedPayload_ReturnsBroken() throws Exception {
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "p1");
-            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "p2");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"p\":1}");
+            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "{\"p\":2}");
 
             // Directly tamper with the database record
             AuditRecord record2 = auditRecordRepository.findAll().get(1);
@@ -413,8 +413,8 @@ class AuditControllerTest {
         @Test
         @DisplayName("Tampered record previousHash returns BROKEN with PREVIOUS_HASH_MISMATCH")
         void verifyChain_TamperedPreviousHash_ReturnsBroken() throws Exception {
-            createRecordViaApi("LOGIN", "alice", "USER", "u1", "p1");
-            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "p2");
+            createRecordViaApi("LOGIN", "alice", "USER", "u1", "{\"p\":1}");
+            createRecordViaApi("TRADE", "bob", "ORDER", "o1", "{\"p\":2}");
 
             // Directly tamper with previousHash
             AuditRecord record2 = auditRecordRepository.findAll().get(1);
