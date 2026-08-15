@@ -43,3 +43,13 @@ Build the Core Audit Log Service (Scenario A), a tamper-evident system that reco
 - **Behavior**: Iterates through the entire chain from ID 1 to the latest record. Recalculates the hash for each step and compares it to the stored hash and `previousHash`.
 - **Response (Intact)**: `{ "status": "INTACT" }`
 - **Response (Broken)**: `{ "status": "BROKEN", "firstInconsistentRecordId": 123, "violationType": "HASH_MISMATCH" }`
+
+## 5. Error Handling
+- **400 Bad Request**: Missing required fields or invalid payload format. Standardized `ProblemDetail` (RFC 7807) response outlining validation failures.
+- **401 Unauthorized**: Missing or invalid authentication credentials.
+- **409 Conflict**: Returned if a concurrent write operation violates the sequential append constraint (client may retry).
+- **500 Internal Server Error**: Catch-all for unhandled exceptions or data store unavailability.
+
+## 6. Authentication
+- **Mechanism**: Simple HTTP Basic Authentication using Spring Security.
+- **Configuration**: A single system-level username and password will be configured via `application.properties` to protect all `/api/audit/**` endpoints.
